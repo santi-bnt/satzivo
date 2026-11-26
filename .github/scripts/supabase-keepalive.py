@@ -7,6 +7,14 @@ import urllib.request
 
 
 EXPECTED_URL = 'https://satzivo.vercel.app/api/keepalive'
+DATABASE_ERROR_CATEGORIES = {
+    'tls': 'TLS certificate validation',
+    'authentication': 'PostgreSQL authentication',
+    'network': 'network or pooler connectivity',
+    'permission': 'database permissions',
+    'sql': 'SQL execution or result validation',
+    'unknown': 'unclassified PostgreSQL connection failure',
+}
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -44,7 +52,11 @@ def check(url, token, opener_factory=urllib.request.build_opener):
     request = urllib.request.Request(
         url,
         method='POST',
-        headers={'Authorization': 'Bearer ' + token, 'Accept': 'application/json'},
+        headers={
+            'Authorization': 'Bearer ' + token,
+            'Accept': 'application/json',
+            'User-Agent': 'satzivo-keepalive/github-actions',
+        },
     )
     try:
         with opener_factory(NoRedirect).open(request, timeout=15) as response:
@@ -58,7 +70,13 @@ def check(url, token, opener_factory=urllib.request.build_opener):
         if 300 <= error.code < 400:
             return 'Maintenance endpoint redirected the request; confirm KEEPALIVE_URL uses the production URL exactly.'
         if error.code == 401:
-            return 'Maintenance endpoint rejected KEEPALIVE_TOKEN (HTTP 401). Check that both services use the same token.'
+            try:
+                body = json.loads(error.read(4096))
+            except (ValueError, OSError, UnicodeDecodeError):
+                body = {}
+            if body == {'ok': False, 'error': 'unauthorized'}:
+                return 'Vercel keep-alive handler rejected KEEPALIVE_TOKEN (HTTP 401). Check that both services use the same token.'
+            return 'HTTP 401 was returned before the keep-alive handler response (likely Vercel deployment protection); check response headers and deployment protection settings. PostgreSQL was not queried.'
         if error.code == 503:
             try:
                 body = json.loads(error.read(4096))
@@ -67,7 +85,8 @@ def check(url, token, opener_factory=urllib.request.build_opener):
             if body.get('error') == 'not_configured':
                 return 'Vercel reports keep-alive configuration missing or invalid (HTTP 503); check KEEPALIVE_DATABASE_URL and KEEPALIVE_TOKEN. PostgreSQL was not queried.'
             if body.get('error') == 'database_unavailable':
-                return 'Vercel could not connect to PostgreSQL or verify SELECT 1 (HTTP 503); check the dedicated role, pooler URL/TLS, and Supabase project status.'
+                category = DATABASE_ERROR_CATEGORIES.get(body.get('category'), DATABASE_ERROR_CATEGORIES['unknown'])
+                return f'Vercel PostgreSQL check failed during {category} (HTTP 503); inspect the Vercel keep-alive event logs. No credentials or provider error details are returned.'
             return 'Maintenance endpoint returned HTTP 503; Vercel keep-alive configuration or PostgreSQL is unavailable.'
         return f'Maintenance endpoint returned HTTP {error.code}; PostgreSQL was not verified.'
     except (urllib.error.URLError, TimeoutError, OSError):

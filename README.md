@@ -105,7 +105,7 @@ Guest progress continues to use the local SQLite database at `data/deutsch-lerne
 
 The Vercel API blocks shared SQLite study routes. On the web, learners must sign in to study and sync across devices. Temporary disconnections and stale revisions are handled without silently overwriting newer cloud data. Daily dates use `America/Mexico_City`; recorded study time is elapsed time, not a measure of active attention.
 
-The Supabase Keep-Alive workflow is not configured yet. It requires a dedicated least-privilege PostgreSQL role and secrets in Vercel and GitHub. See [docs/supabase-keepalive.md](docs/supabase-keepalive.md). It cannot guarantee that a free Supabase project will avoid inactivity pauses.
+The Supabase Keep-Alive workflow uses a dedicated least-privilege PostgreSQL role and Vercel/GitHub secrets. It currently reports `database_unavailable`; the Node handler now uses Supabase's verified database CA and adds safe failure categories. Production success still needs a manual Actions run. See [docs/supabase-keepalive.md](docs/supabase-keepalive.md). Keep-alive cannot guarantee that a free Supabase project will avoid inactivity pauses.
 
 ## Validation
 

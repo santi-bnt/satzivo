@@ -12,9 +12,9 @@ Two real Supabase test accounts verified guest-data import, idempotent retries, 
 
 Nested `/api/a2/*` requests are rewritten to `api/router.js`, which restores the Express request path before routing. Authenticated web users store study data in Supabase. SQLite remains for local guests and the preserved backup; guest import is explicit and idempotent. Vercel does not use SQLite as shared user storage, so the web app requires sign-in.
 
-## Keep-Alive is not configured
+## Keep-Alive production verification pending
 
-The daily GitHub Actions workflow exists but its latest run failed before requesting the endpoint. An unauthenticated production check returned `not_configured` (HTTP 503), so Vercel's `KEEPALIVE_DATABASE_URL` or `KEEPALIVE_TOKEN` is absent or invalid; the Actions log also indicates its URL or token secret is missing or invalid. No PostgreSQL query has been confirmed. Create/configure the dedicated least-privilege role and secrets as described in [supabase-keepalive.md](supabase-keepalive.md), then run the workflow manually. Keep-Alive cannot guarantee that a free Supabase project will avoid inactivity pauses.
+The daily GitHub Actions workflow exists and the user verified its secrets, bearer authentication, and the dedicated role's successful `psql` connection. Vercel still returns HTTP 503 `database_unavailable`; the local `psql` flow uses Supabase's root CA while the old Node `pg` client only used Node's default CA list. The handler now supplies the Supabase CA with strict certificate and hostname checks, and returns safe failure categories. Production must be redeployed and the workflow run manually to confirm HTTP 200 and the actual `SELECT 1`. See [supabase-keepalive.md](supabase-keepalive.md). Keep-Alive cannot guarantee that a free Supabase project will avoid inactivity pauses.
 
 ## Local and deployment checks
 

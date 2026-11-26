@@ -44,7 +44,7 @@ The UI component tests cover bilingual navigation, the dictionary, lesson autosa
 
 Still requiring manual device/editorial review: iOS and Android layout and microphone behavior, listening through physical speakers, and independent linguistic review. The app's feedback is indicative and is not an official Goethe score. These checks are not reported as complete.
 
-Supabase Keep-Alive has not been configured or run in GitHub Actions. It requires a dedicated least-privilege PostgreSQL role and the variables documented in [supabase-keepalive.md](supabase-keepalive.md).
+Supabase Keep-Alive is configured in GitHub Actions and Vercel, but production currently reports `database_unavailable`. The handler now supplies the Supabase root CA with strict TLS verification and safe error categorization. A successful deployed workflow run is still required; see [supabase-keepalive.md](supabase-keepalive.md).
 
 ## Earlier baseline
 
