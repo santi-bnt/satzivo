@@ -8,12 +8,13 @@ const supabaseCa=readFileSync(new URL('../supabase/supabase-root-2021.crt',impor
 const tlsCodes=new Set(['CERT_HAS_EXPIRED','CERT_NOT_YET_VALID','CERT_REVOKED','CERT_SIGNATURE_FAILURE','DEPTH_ZERO_SELF_SIGNED_CERT','ERR_TLS_CERT_ALTNAME_INVALID','SELF_SIGNED_CERT_IN_CHAIN','UNABLE_TO_GET_ISSUER_CERT','UNABLE_TO_GET_ISSUER_CERT_LOCALLY','UNABLE_TO_VERIFY_LEAF_SIGNATURE']);
 const networkCodes=new Set(['ECONNABORTED','ECONNREFUSED','ECONNRESET','EHOSTUNREACH','ENETDOWN','ENETUNREACH','ENOTFOUND','EAI_AGAIN','EPIPE','ERR_SOCKET_CLOSED','ETIMEDOUT','57P03','53300']);
 function classifyDatabaseError(error,phase){
- const code=typeof error?.code==='string'&&/^[A-Z0-9_]{1,64}$/.test(error.code)?error.code:'';
- if(tlsCodes.has(code)||/^ERR_TLS_|^CERT_/.test(code)||/certificate (?:has expired|is not yet valid|verify failed|is invalid)/i.test(error?.message??''))return {category:'tls',code};
- if(code==='28P01'||code==='28000'||code.startsWith('28'))return {category:'authentication',code};
- if(code==='42501')return {category:'permission',code};
- if(networkCodes.has(code)||code.startsWith('08'))return {category:'network',code};
- if(phase==='query'||/^[0-9A-Z]{5}$/.test(code))return {category:'sql',code};
+ const rawCode=typeof error?.code==='string'?error.code:'';
+ const code=tlsCodes.has(rawCode)||networkCodes.has(rawCode)||/^[0-9A-Z]{5}$/.test(rawCode)?rawCode:'';
+ if(tlsCodes.has(rawCode)||/^ERR_TLS_|^CERT_/.test(rawCode)||/certificate (?:has expired|is not yet valid|verify failed|is invalid)/i.test(error?.message??''))return {category:'tls',code};
+ if(rawCode==='28P01'||rawCode==='28000'||rawCode.startsWith('28'))return {category:'authentication',code};
+ if(rawCode==='42501')return {category:'permission',code};
+ if(networkCodes.has(rawCode)||rawCode.startsWith('08'))return {category:'network',code};
+ if(phase==='query'||/^[0-9A-Z]{5}$/.test(rawCode))return {category:'sql',code};
  return {category:'unknown',code};
 }
 export function createKeepaliveHandler({env=process.env,makeClient=options=>new pg.Client(options)}={}){

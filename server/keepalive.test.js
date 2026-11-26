@@ -58,6 +58,13 @@ test('classifies permission and SQL failures during the read-only query',async()
  }
 });
 
+test('does not log arbitrary driver codes or error text',async()=>{
+ const driverCode='SECRET_TOKEN_NOT_FOR_LOGS';
+ const {result,entries}=await captureLogs(()=>run(createKeepaliveHandler({env,makeClient:()=>({connect:async()=>{const e=Error(`private ${connectionString} ${secret}`);e.code=driverCode;throw e;},end:async()=>{}})})));
+ assert.equal(result.code,503);assert.deepEqual(result.body,{ok:false,error:'database_unavailable',category:'unknown'});
+ const logs=entries.join('\n');assert.ok(!logs.includes(driverCode));assert.ok(!logs.includes(password));assert.ok(!logs.includes(secret));assert.ok(!logs.includes('pooler.example.test'));
+});
+
 test('rejects insecure or malformed database configuration without constructing a client',async()=>{
  for(const connection of [
   'postgresql://user:password@pooler.example.test/postgres?sslmode=disable',
